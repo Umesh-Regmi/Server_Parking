@@ -1,7 +1,11 @@
 import mongoose from "mongoose";
-
+import { v4 as uuidv4 } from "uuid";
 const BookingSchema = new mongoose.Schema(
   {
+    bookingId: {
+      type: String,
+      // default: () => uuidv4().split("-")[0],
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "user",
@@ -15,17 +19,17 @@ const BookingSchema = new mongoose.Schema(
 
     slotNumber: {
       type: Number,
-      required: true,
+      required: false,
     },
 
     startTime: {
       type: Date,
-      required: true,
+      required: false,
     },
 
     endTime: {
       type: Date,
-      required: true,
+      required: false,
     },
     vehicle: {
       number: {

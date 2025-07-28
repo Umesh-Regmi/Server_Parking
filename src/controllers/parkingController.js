@@ -1,6 +1,74 @@
 import ParkingSpot from "../models/parkingspot.js";
 import { haversineDistance } from "../utils/calcDistance.js";
 
+import { dijkstra, reconstructPath } from "../utils/dijkstra.js";
+
+function getDistance(a, b) {
+  const dx = a.lat - b.lat;
+  const dy = a.lng - b.lng;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+export async function searchParkingSpots(req, res) {
+  const { query = "", lat, lng } = req.query;
+
+  try {
+    const allSpots = await ParkingSpot.find().populate("edges.to");
+
+    // 🌐 Find closest node to user location
+    let startNode = null;
+    if (lat && lng) {
+      const userPos = { lat: parseFloat(lat), lng: parseFloat(lng) };
+      let minDist = Infinity;
+
+      for (const spot of allSpots) {
+        const dist = getDistance(userPos, spot.coordinates);
+        if (dist < minDist) {
+          minDist = dist;
+          startNode = spot;
+        }
+      }
+    }
+
+    // 🧠 Text match filter
+    const matchingSpots = allSpots.filter((spot) =>
+      spot.name.toLowerCase().includes(query.toLowerCase())
+    );
+
+    if (!startNode) {
+      return res.json({ spots: matchingSpots });
+    }
+
+    // 📈 Run Dijkstra from closest node
+    const { distances, previous } = dijkstra(
+      startNode._id.toString(),
+      allSpots
+    );
+
+    const enriched = matchingSpots.map((spot) => {
+      const id = spot._id.toString();
+      const distance = distances[id] ?? Infinity;
+      const path = reconstructPath(previous, startNode._id.toString(), id);
+
+      return {
+        ...spot.toObject(),
+        distance,
+        path,
+      };
+    });
+
+    enriched.sort((a, b) => a.distance - b.distance);
+
+    res.json({
+      startSpot: startNode,
+      spots: enriched,
+    });
+  } catch (err) {
+    console.error("Search error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+}
+
 export async function addParkingSpot(req, res) {
   try {
     const newSpot = await ParkingSpot.create(req.body);
@@ -17,6 +85,15 @@ export async function addParkingSpot(req, res) {
 export async function getAllParkingSpots(req, res) {
   try {
     const spots = await ParkingSpot.find();
+    res.json(spots);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+export async function getById(req, res) {
+  try {
+    const spots = await ParkingSpot.findById(req.params.id);
     res.json(spots);
   } catch (error) {
     res.status(500).json({ message: error.message });

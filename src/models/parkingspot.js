@@ -7,18 +7,9 @@ const ParkingSpotSchema = new mongoose.Schema(
       lat: { type: Number, required: true },
       lng: { type: Number, required: true },
     },
-    totalSlots: {
-      type: Number,
-      required: true,
-    }, // 🆕 total capacity
-    price: {
-      type: Number,
-      required: true,
-    }, // 🆕 price per hour
-    availableSlots: {
-      type: Number,
-      required: true,
-    }, // 🆕 dynamic availability
+    totalSlots: { type: Number, required: true }, // 🆕 total capacity
+    price: { type: Number, required: false }, // 🆕 price per hour
+    availableSlots: { type: Number, required: true }, // 🆕 dynamic availability
 
     isAvailable: {
       type: Boolean,
