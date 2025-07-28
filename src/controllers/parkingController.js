@@ -1,4 +1,5 @@
 import ParkingSpot from "../models/parkingspot.js";
+import User from "../models/user.js";
 import { haversineDistance } from "../utils/calcDistance.js";
 
 import { dijkstra, reconstructPath } from "../utils/dijkstra.js";
@@ -71,9 +72,30 @@ export async function searchParkingSpots(req, res) {
 
 export async function addParkingSpot(req, res) {
   try {
-    const newSpot = await ParkingSpot.create(req.body);
+    const { userId } = req.params;
 
-    // Create edges after spot added
+    // 1. Check if user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // 2. Check if user is a spot_host
+    if (user.role !== "spot_host") {
+      return res
+        .status(403)
+        .json({ message: "Only spot hosts can add parking spots" });
+    }
+
+    // 3. Create parking spot with user as host
+    const newSpotData = {
+      ...req.body,
+      host: user._id,
+    };
+
+    const newSpot = await ParkingSpot.create(newSpotData);
+
+    // 4. Optional: Create edges (graph logic)
     await createEdgesForNewSpot(newSpot);
 
     res.status(201).json(newSpot);
@@ -85,6 +107,18 @@ export async function addParkingSpot(req, res) {
 export async function getAllParkingSpots(req, res) {
   try {
     const spots = await ParkingSpot.find();
+    res.json(spots);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+export async function getHostParkingSpots(req, res) {
+  try {
+    const spots = await ParkingSpot.find({ host: req.params.userId }).populate(
+      "host",
+      "name email role"
+    );
     res.json(spots);
   } catch (error) {
     res.status(500).json({ message: error.message });

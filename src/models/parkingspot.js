@@ -7,14 +7,18 @@ const ParkingSpotSchema = new mongoose.Schema(
       lat: { type: Number, required: true },
       lng: { type: Number, required: true },
     },
-    totalSlots: { type: Number, required: true }, // 🆕 total capacity
-    price: { type: Number, required: false }, // 🆕 price per hour
-    availableSlots: { type: Number, required: true }, // 🆕 dynamic availability
-
+    totalSlots: { type: Number, required: true },
+    price: { type: Number, required: false },
+    availableSlots: { type: Number, required: true },
     isAvailable: {
       type: Boolean,
       default: true,
-    }, // optional, could be derived
+    },
+    host: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    }, // ✅ NEW: reference to the spot host user
     edges: [
       {
         to: {
@@ -28,11 +32,15 @@ const ParkingSpotSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const ParkingSpot = mongoose.model("parkingSpot", ParkingSpotSchema);
+// Indexes
 ParkingSpotSchema.index({ "coordinates.lat": 1, "coordinates.lng": 1 });
-ParkingSpotSchema.index({ name: "text" }); // optional, for name search
+ParkingSpotSchema.index({ name: "text" });
+
+// Auto-update isAvailable before saving
 ParkingSpotSchema.pre("save", function (next) {
   this.isAvailable = this.availableSlots > 0;
   next();
 });
+
+const ParkingSpot = mongoose.model("parkingSpot", ParkingSpotSchema);
 export default ParkingSpot;
